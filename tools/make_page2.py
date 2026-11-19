@@ -220,6 +220,20 @@ NUMBERS = [
     ('46', 'injured in Prague\'s train collision', 'train'),
 ]
 
+REGION_COLOURS = {
+    'EUROPE': (38, 74, 130),
+    'AMERICAS': (150, 40, 48),
+    'MIDDLE EAST': (150, 104, 34),
+    'AFRICA': (34, 104, 74),
+    'ASIA-PACIFIC': (92, 62, 130),
+    'OCEANIA & WORLD': (26, 96, 104),
+}
+
+REGION_ICONS = {
+    'EUROPE': 'ship', 'AMERICAS': 'ballot', 'MIDDLE EAST': 'drum',
+    'AFRICA': 'virus', 'ASIA-PACIFIC': 'chip', 'OCEANIA & WORLD': 'rocket',
+}
+
 HOTSPOTS = [
     ('ODESA', 0.30, 0.34), ('QESHM', 0.60, 0.56), ('BADME', 0.44, 0.70),
     ('SHENZHEN', 0.70, 0.30), ('CARACAS', 0.18, 0.62), ('GAZA', 0.48, 0.44),
@@ -302,13 +316,13 @@ def render(out):
     d.rectangle((panel_x, hero_top, W - M, hero_bot), outline=(44, 52, 62))
 
     tracked(d, (M, hero_top + 2), 'THE LEAD  ·  UKRAINE', load(SANS_BOLD, 8.4), ACCENT, 1.3)
-    hf, hl, hs = fit(LEAD[0], SERIF_BOLD, 30, 18, panel_x - M - 18, 3)
+    hf, hl, hs = fit(LEAD[0], SERIF_BOLD, 34, 19, panel_x - M - 18, 3)
     y = hero_top + 18
     for line in hl:
         d.text((M, y), line, font=hf, fill=INK)
         y += hs * 1.04
     y += 2
-    y = block(d, LEAD[1], load(SERIF, 11.4), BODY, M, y, panel_x - M - 18, 15.4, 4)
+    y = block(d, LEAD[1], load(SERIF, 12.0), BODY, M, y, panel_x - M - 18, 16.0, 4)
     rule(d, M, y + 5, M + 26, y + 5, ACCENT, 3)
     block(d, LEAD[2], load(SANS_BOLD, 8.4), TEAL, M + 32, y + 1, panel_x - M - 50, 11, 1)
     if y + 16 > hero_bot:
@@ -354,7 +368,7 @@ def render(out):
     sec_bot = 966
     sgap = 16
     sw = (W - 2 * M - 2 * sgap) / 3
-    bullet_font = load(SANS, 9.3)
+    bullet_font = load(SANS, 9.9)
 
     def section_height(items):
         h = 20.0
@@ -362,12 +376,12 @@ def render(out):
             lines = wrap(text, bullet_font, sw - 9)
             if len(lines) > 2:
                 raise SystemExit(f'bullet too long: {text[:44]!r}')
-            h += len(lines) * 11.1 + 2.2
+            h += len(lines) * 12.0 + 2.6
         return h
 
     cols = [[] for _ in range(3)]
     col_h = [0.0] * 3
-    for region, items in SECTIONS:
+    for region, items in sorted(SECTIONS, key=lambda r: -section_height(r[1])):
         h = section_height(items) + 8
         i = col_h.index(min(col_h))
         cols[i].append((region, items))
@@ -377,16 +391,17 @@ def render(out):
         x0 = M + ci * (sw + sgap)
         y = sec_y
         for region, items in blocks:
-            d.rectangle((x0, y, x0 + sw, y + 13), fill=INK)
-            tracked(d, (x0 + 5, y + 3), f'{region}  \u00b7  {len(items)}',
-                    load(SANS_BOLD, 7.6), WHITE, 0.8)
+            d.rectangle((x0, y, x0 + sw, y + 14), fill=REGION_COLOURS[region])
+            tracked(d, (x0 + 6, y + 3.5), f'{region}  \u00b7  {len(items)}',
+                    load(SANS_BOLD, 7.8), WHITE, 0.9)
+            icons.ICONS[REGION_ICONS[region]](d, x0 + sw - 22, y - 3, 20)
             y += 20
             for text in items:
                 d.ellipse((x0, y + 3.4, x0 + 2.6, y + 6), fill=ACCENT)
                 for line in wrap(text, bullet_font, sw - 9):
                     d.text((x0 + 9, y), line, font=bullet_font, fill=BODY)
-                    y += 11.1
-                y += 2.2
+                    y += 12.0
+                y += 2.6
             y += 7
         if y > sec_bot:
             raise SystemExit(f'section column {ci + 1} overflows: {y:.0f} > {sec_bot}')
@@ -397,6 +412,10 @@ def render(out):
             'Kyodo, NASA, NYT, PAHO, Polygon, Reuters, SBS, Sudantribune, The Hindu, WHO and '
             'the WSJ on Wednesday 18 November 2026. Assembled by an AI agent for make.fun.')
     block(d, foot, load(SANS, 7.2), MUTED, M, sec_bot + 8, W - 2 * M, 8.6, 2)
+
+    shade = Image.radial_gradient('L').resize((W, H)).point(lambda v: int(v * 0.085))
+    tint = Image.new('RGB', (W, H), (232, 224, 208))
+    img = Image.composite(tint, img, shade)
 
     noise = Image.effect_noise((W, H), 16).convert('L').point(lambda v: int(v * 0.012))
     grain = Image.merge('RGB', (noise, noise, noise))

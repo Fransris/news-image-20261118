@@ -20,6 +20,9 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import icons  # noqa: E402
+
 SRC = Path(__file__).with_name('make_news_image.py')
 _spec = importlib.util.spec_from_file_location('m', SRC)
 m = importlib.util.module_from_spec(_spec)
@@ -41,6 +44,8 @@ FIELD_NAMES = {
     'DISASTER': 'CLIMATE & DISASTER', 'CULTURE': 'CULTURE', 'SCIENCE': 'SCIENCE',
     'SPORT': 'SPORT', 'CLIMATE': 'CLIMATE',
 }
+
+NUMBER_ICONS = ['drone', 'ballot', 'virus', 'rocket', 'chip', 'drum', 'gavel', 'train']
 
 LEAD = (
     'IRAN ANSWERS A STRIKE WITH DRONES ON TWO GULF BASES',
@@ -170,26 +175,41 @@ def render(scale, out):
     d = ImageDraw.Draw(img)
 
     # ------------------------------------------------------------- masthead
-    tracked(d, (M, 8), 'THE DAY IN WORLD NEWS', load(SERIF_BOLD, 31), INK, 0.9)
+    tracked(d, (M, 4), 'THE DAY IN WORLD NEWS', load(SERIF_BOLD, 30), INK, 0.9)
     rf = load(SANS_BOLD, 10.5)
     right = 'WED · 18 NOV 2026'
-    d.text((W - M - rf.getlength(right), 14), right, font=rf, fill=INK)
-    d.rectangle((W - M - 26, 28, W - M, 31), fill=ACCENT)
+    d.text((W - M - rf.getlength(right), 10), right, font=rf, fill=INK)
+    d.rectangle((W - M - 26, 24, W - M, 27), fill=ACCENT)
 
     claim = ('Everything on this page happened, or was first reported, on Wednesday '
              '18 November 2026, UTC.')
-    d.text((M, 43), claim, font=load(SERIF, 9.0), fill=MUTED)
+    d.text((M, 38), claim, font=load(SERIF, 8.8), fill=MUTED)
 
     fields = {}
     for story in STORIES:
         fields[story[1]] = fields.get(story[1], 0) + 1
     counts = (f'{len(STORIES)} STORIES  ·  {len({s[0] for s in STORIES})} REGIONS  ·  '
               f'{len(fields)} FIELDS  ·  ONE PAGE  ·  SOURCED IN PLACE')
-    tracked(d, (M, 55), counts, load(SANS_BOLD, 7.4), ACCENT, 1.1)
-    rule(d, M, 68, W - M, 68, INK, 2)
+    tracked(d, (M, 50), counts, load(SANS_BOLD, 7.4), ACCENT, 1.1)
+    rule(d, M, 60, W - M, 60, INK, 2)
+
+    # ------------------------------------------- field row, as a small bar chart
+    ff = load(SANS_BOLD, 7.0)
+    fx = M
+    peak = max(fields.values())
+    for key, n in sorted(fields.items(), key=lambda kv: -kv[1]):
+        bar = 3 + 12 * n / peak
+        d.rectangle((fx, 70 - bar, fx + 3, 70), fill=TEAL)
+        label = f'{FIELD_NAMES[key]} {n}'
+        w = ff.getlength(label) + 13
+        if fx + w > W - M:
+            raise Overflow('field row overflows')
+        d.text((fx + 6, 62), label, font=ff, fill=TEAL)
+        fx += w
+    rule(d, M, 76, W - M, 76, RULE, 1)
 
     # ---------------------------------------------------------------- hero
-    hero_top, hero_bot = 74, 244
+    hero_top, hero_bot = 82, 250
     panel_x = 640
     draw_globe(d, (panel_x, hero_top, W - M, hero_bot))
     d.rectangle((panel_x, hero_top, W - M, hero_bot), outline=(40, 48, 58))
@@ -223,8 +243,9 @@ def render(scale, out):
         x = M + i * cell
         if i:
             rule(d, x - 4, nb_top + 3, x - 4, nb_bot - 3, RULE, 1)
-        nf, nl, used = fit(num, SERIF_BOLD, 16.5, 9, cell - 9, 1)
-        d.text((x, nb_top + 2), nl[0], font=nf, fill=ACCENT)
+        icons.ICONS[NUMBER_ICONS[i % len(NUMBER_ICONS)]](d, x + 1, nb_top + 5, 20)
+        nf, nl, used = fit(num, SERIF_BOLD, 16.5, 9, cell - 32, 1)
+        d.text((x + 25, nb_top + 2), nl[0], font=nf, fill=ACCENT)
         lines = wrap(cap, load(SANS, 6.8), cell - 9)
         if len(lines) > 2:
             raise Overflow(f'caption too long: {num}')
